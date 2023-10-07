@@ -113,7 +113,7 @@ def check_contour_line_overlap(contour, line_positions, frame, frame_draw=None):
     return touch_indexes
 
 
-def check_contour_is_big_celestial(contour, classification_model, frame, frame_color, frame_draw=None):
+def check_contour_is_big_celestial(contour, classification_model, frame, frame_model, frame_color, frame_draw=None):
     """
     Checks if contour has overlap with binary classification model's mask prediction for the frame. If there is overlap
     then the contour is a big celestial object.
@@ -121,6 +121,7 @@ def check_contour_is_big_celestial(contour, classification_model, frame, frame_c
     :param contour: contour object
     :param classification_model: binary classification model to predict a binary mask for frame
     :param frame: black and white image to get contour area from
+    :param frame_model: binary mask from binary classification model
     :param frame_color: image with color for model to predict a binary mask
     :param frame_draw: optional image to draw the centroid of the contour on if it's classified as a big celestial
                        (new image if none is given)
@@ -128,10 +129,6 @@ def check_contour_is_big_celestial(contour, classification_model, frame, frame_c
     """
     if frame_draw is None:
         frame_draw = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
-
-    # classify
-    frame_model = classification_model.predict(np.expand_dims(frame_color, axis=0))[0]
-    frame_model = clear_classification(frame_model)  # clear classification
 
     # create an empty mask
     contour_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
@@ -269,6 +266,10 @@ def object_handler(frame, frame_color, frame_draw=None,
     # big celestials
     big_celestial_colors = []
     big_celestial_area = 0
+    # get binary classifications mask from model
+    if classification_model is not None:
+        frame_model = classification_model.predict(np.expand_dims(frame_color, axis=0))[0]
+        frame_model = clear_classification(frame_model)  # clear classification
 
     touches_line_colors = []
     for line in range(num_lines):
@@ -286,7 +287,7 @@ def object_handler(frame, frame_color, frame_draw=None,
         is_big_celestial = False
         if classification_model is not None:
             is_big_celestial = check_contour_is_big_celestial(contour, classification_model,
-                                                              frame, frame_color, frame_draw)
+                                                              frame, frame_model, frame_color, frame_draw)
             if is_big_celestial:
                 big_celestial_colors.append(get_contour_color(contour, frame_color))
                 big_celestial_area += contour_area
