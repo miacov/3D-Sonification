@@ -3,15 +3,22 @@ import os
 import numpy as np
 import pandas as pd
 import shutil
+from keras.models import load_model
 
 
-def black_and_white_video_frame(frame_color, black_and_white_threshold=26):
+def black_and_white_video_frame(frame_color, black_and_white_threshold=26,
+                                dilation_iterations=2, dilation_size=5,
+                                erosion_iterations=0, erosion_size=5):
     """
     Returns black and white image from colored image with a certain threshold for values.
 
     :param frame_color: colored image
     :param black_and_white_threshold: max value for black values, rest is white
     :return: returns black and white image
+    :param dilation_iterations: iterations to run dilation on image, 0 to not run
+    :param dilation_size: size of dilation matrix
+    :param erosion_iterations: iterations to run erosion on image, 0 to not run
+    :param erosion_size: size of erosion matrix
     """
     # convert to grayscale
     frame_gray = cv2.cvtColor(frame_color, cv2.COLOR_BGR2GRAY)
@@ -30,6 +37,18 @@ def black_and_white_video_frame(frame_color, black_and_white_threshold=26):
     # cv2.imwrite("color.png" , frame_color)
     # cv2.imwrite("gray.png" , frame_gray)
     # cv2.imwrite("b&w.png" , frame_bw)
+
+    # dilate image
+    if dilation_iterations > 0:
+        dilation_kernel = np.ones((dilation_size, dilation_size), np.uint8)
+
+        frame_bw = cv2.dilate(frame_bw, dilation_kernel, iterations=dilation_iterations)
+
+    # erode image
+    if erosion_iterations > 0:
+        erosion_kernel = np.ones((erosion_size, erosion_size), np.uint8)
+
+        frame_bw = cv2.erode(frame_bw, erosion_kernel, iterations=erosion_iterations)
 
     return frame_bw
 
@@ -294,6 +313,30 @@ def object_handler(frame, frame_color, frame_draw=None,
             total_contour_area, total_contour_count, total_contour_useful_area, total_contour_useful_count, frame_draw
 
 
+def clear_classification(frame_model):
+    """
+    Clears misclassifications in model prediction.
+
+    :param frame_model: frame produced by model
+    :return:
+    """
+    frame_model[frame_model >= 0.99] = 255
+    frame_model[frame_model < 0.99] = 0
+
+    erosion_kernel_initial = np.ones((8, 8), np.uint8)
+    erosion_kernel_final = np.array([[1, 1, 1],
+                                     [1, 0, 1],
+                                     [1, 1, 1]], dtype=np.uint8)
+
+    dilation_kernel = np.ones((4, 4), np.uint8)
+
+    eroded_initial = cv2.erode(frame_model.copy(), erosion_kernel_initial, iterations=3)
+    dilated = cv2.dilate(eroded_initial, dilation_kernel, iterations=2)
+    eroded_final = cv2.erode(dilated, erosion_kernel_final, iterations=5)
+
+    return eroded_final
+
+
 def get_lines_dictionary(line_positions, lines, line_colors):
     """
     Creates dictionary of extracted line features and information.
@@ -320,7 +363,29 @@ def get_lines_dictionary(line_positions, lines, line_colors):
 def get_contours_dictionary(contour_centroids, contour_colors, contour_areas,
                             total_contour_area, total_contour_count,
                             total_contour_useful_area, total_contour_useful_count):
+    """
+    Creates dictionary of extracted contour features and information.
+
+    :param contour_centroids: array of selected contour centroids, if None no contour is selected
+    :param contour_colors: array of selected contour median colors, if None no contour is selected
+    :param contour_areas: array of selected contour areas, if None no contour is selected
+    :param total_contour_area: total contour area in frame
+    :param total_contour_count: total number of contours in frame
+    :param total_contour_useful_area: total useful contour area in frame
+    :param total_contour_useful_count: total number of useful contours in frame
+    :return:
+    """
     contour_dict = {}
+
+    # no contour selected
+    if contour_centroids is None:
+        contour_choice = "_contour" + str(0)
+        contour_dict["x" + contour_choice] = -1
+        contour_dict["y" + contour_choice] = -1
+        contour_dict["median_red" + contour_choice] = -1
+        contour_dict["median_green" + contour_choice] = -1
+        contour_dict["median_blue" + contour_choice] = -1
+        contour_dict["area" + contour_choice] = -1
 
     # for each saved contour selected
     for idx, contour in enumerate(contour_centroids):
@@ -510,19 +575,21 @@ def create_video(frames, output_video_path, fps=1, is_color=True):
 
 
 if __name__ == "__main__":
+    model = load_model("classifier.h5")
+
     fps = 30
     videos = pd.read_csv("videos.csv")
     for idx, video in videos.iterrows():
         print("Processing video: " + video["Video Name"])
 
-        if video["Video Name"] == "Flight_to_AG_Carinae.mp4":
+        if video["Video Name"] == "A_Flight_to_HCG_40.mp4":
             process_video_frames(video["Video Name"], video["Start Time"] * fps, video["End Time"] * fps,
                                  frame_interval=30,
-                                 output_plain_frames=True, output_processed_frames=True,
+                                 output_plain_frames=False, output_processed_frames=True,
                                  output_processed_video=True, output_processed_video_fps=1,
-                                 black_and_white_threshold=26,
+                                 black_and_white_threshold=55,
                                  contour_threshold_max=100000, contour_threshold_min=4,
-                                 ignore_centroids_max=4, ignore_centroids_distance=200
+                                 ignore_centroids_max=3, ignore_centroids_distance=200
                                  )
 
         """
