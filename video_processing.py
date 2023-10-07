@@ -113,6 +113,48 @@ def check_contour_line_overlap(contour, line_positions, frame, frame_draw=None):
     return touch_indexes
 
 
+def check_contour_is_big_celestial(contour, classification_model, frame, frame_color, frame_draw=None):
+    """
+    Checks if contour has overlap with binary classification model's mask prediction for the frame. If there is overlap
+    then the contour is a big celestial object.
+
+    :param contour: contour object
+    :param classification_model: binary classification model to predict a binary mask for frame
+    :param frame: black and white image to get contour area from
+    :param frame_color: image with color for model to predict a binary mask
+    :param frame_draw: optional image to draw the centroid of the contour on if it's classified as a big celestial
+                       (new image if none is given)
+    :return: returns True if contour is a big celestial, otherwise False
+    """
+    if frame_draw is None:
+        frame_draw = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+
+    # classify
+    frame_model = classification_model.predict(np.expand_dims(frame_color, axis=0))[0]
+    frame_model = clear_classification(frame_model)  # clear classification
+
+    # create an empty mask
+    contour_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+    cv2.drawContours(contour_mask, [contour], -1, (255, 255, 255), thickness=cv2.FILLED)
+
+    # use the mask to extract the region within the contour
+    contour_roi = cv2.bitwise_and(frame, frame, mask=contour_mask)
+
+    # bitwise end to check overlap with model's binary classification mask
+    overlap_mask = cv2.bitwise_and(contour_roi, frame_model)
+    overlap_exists = np.any(overlap_mask != 0)
+    if overlap_exists:
+        # draw contour centroid with yellow color
+        moments = cv2.moments(contour)
+        centroid_x = int(moments["m10"] / moments["m00"])
+        centroid_y = int(moments["m01"] / moments["m00"])
+        frame_draw = cv2.circle(frame_draw, (centroid_x, centroid_y), 10, (0, 255, 255), -1)
+
+        return True
+
+    return False
+
+
 def get_contours(frame, frame_draw=None):
     """
     Generates contours on an image.
@@ -146,7 +188,7 @@ def get_lines(frame, frame_draw=None, num_lines=10, line_width=5):
              for every line, and image with lines drawn on it
     """
     if frame_draw is None:
-        frame_draw = cv2.cvtColor(frame.copy(), cv2.COLOR_GRAY2BGR)
+        frame_draw = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
 
     # segment width between lines (or at start and end)
     # 1 more segment than lines
@@ -175,7 +217,8 @@ def get_lines(frame, frame_draw=None, num_lines=10, line_width=5):
 def object_handler(frame, frame_color, frame_draw=None,
                    contour_threshold_max=100000, contour_threshold_min=4, max_num_contours=1,
                    ignore_centroids=None, ignore_centroids_distance=200,
-                   contours=None, lines=None, line_positions=None, ignore_lines=True, num_lines=10):
+                   contours=None, lines=None, line_positions=None, ignore_lines=True, num_lines=10,
+                   classification_model=None):
     """
     Processes features to extract:
      - Selected contour centroids, median color, area covered
@@ -199,12 +242,14 @@ def object_handler(frame, frame_color, frame_draw=None,
                            black and white frame if ignore_lines is True)
     :param ignore_lines: if True ignore line touching logic, else contours that touch lines are not selected
     :param num_lines: number of lines (used when creating the line array when None are given)
+    :param classification_model: classification model used for big celestial object detection, jf None ignore big
+                                 celestials
     :return: returns centroids, colors, max_contour_areas, line_contour_colors, total_contour_area, total_contour_count,
              total_contour_useful_area, total_contour_useful_count, frame_draw. The first 3 parameters are None if no
              max contour is selected
     """
     if frame_draw is None:
-        frame_draw = cv2.cvtColor(frame.copy(), cv2.COLOR_GRAY2BGR)
+        frame_draw = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
     if contours is None:
         contours, _ = get_contours(frame, frame_draw)
     if (lines is None or line_positions is None) and ignore_lines:
@@ -221,6 +266,10 @@ def object_handler(frame, frame_color, frame_draw=None,
     total_contour_useful_area = 0
     total_contour_useful_count = 0
 
+    # big celestials
+    big_celestial_colors = []
+    big_celestial_area = 0
+
     touches_line_colors = []
     for line in range(num_lines):
         touches_line_colors.append([])
@@ -232,6 +281,15 @@ def object_handler(frame, frame_color, frame_draw=None,
             total_contour_useful_count += 1
             total_contour_useful_area += contour_area
         total_contour_area += contour_area
+
+        # big celestial classification
+        is_big_celestial = False
+        if classification_model is not None:
+            is_big_celestial = check_contour_is_big_celestial(contour, classification_model,
+                                                              frame, frame_color, frame_draw)
+            if is_big_celestial:
+                big_celestial_colors.append(get_contour_color(contour, frame_color))
+                big_celestial_area += contour_area
 
         # check line touching
         touches_line = False
@@ -245,8 +303,9 @@ def object_handler(frame, frame_color, frame_draw=None,
                 for idx in touch_indexes:
                     touches_line_colors[idx].append(color)
 
-        # if new max below threshold
-        if contour_threshold_max >= contour_area > max_contour_area and contour_area >= contour_threshold_min:
+        # if new max below max threshold and above min threshold and is not a big celestial object
+        if contour_threshold_max >= contour_area > max_contour_area and contour_area >= contour_threshold_min and \
+                not is_big_celestial:
             # if not ignoring contours that touch lines or if not touching line when ignoring
             if (not touches_line and ignore_lines) or not ignore_lines:
                 # if parameter is selected, ignore contours with centroids near ignored centroids
@@ -289,6 +348,12 @@ def object_handler(frame, frame_color, frame_draw=None,
         else:
             line_contour_colors.append(np.array((-1, -1, -1)))
 
+    # get medians of contour colors for big celestials
+    if len(big_celestial_colors) == 0:
+        big_celestial_color = np.median(np.array(big_celestial_colors), axis=0).astype(int)
+    else:
+        big_celestial_color = np.array((-1, -1, -1))
+
     if len(max_contour_areas) != 0:
         centroids = []
         colors = []
@@ -306,10 +371,12 @@ def object_handler(frame, frame_color, frame_draw=None,
             # dominant contour color
             colors.append(get_contour_color(contour, frame_color))
 
-        return centroids, colors, max_contour_areas, line_contour_colors, \
+        return centroids, colors, max_contour_areas, line_contour_colors,\
+            big_celestial_color, big_celestial_area, \
             total_contour_area, total_contour_count, total_contour_useful_area, total_contour_useful_count, frame_draw
     else:
         return None, None, None, line_contour_colors, \
+            big_celestial_color, big_celestial_area, \
             total_contour_area, total_contour_count, total_contour_useful_area, total_contour_useful_count, frame_draw
 
 
@@ -318,7 +385,7 @@ def clear_classification(frame_model):
     Clears misclassifications in model prediction.
 
     :param frame_model: frame produced by model
-    :return:
+    :return: returns cleared frame
     """
     frame_model[frame_model >= 0.99] = 255
     frame_model[frame_model < 0.99] = 0
@@ -334,7 +401,7 @@ def clear_classification(frame_model):
     dilated = cv2.dilate(eroded_initial, dilation_kernel, iterations=2)
     eroded_final = cv2.erode(dilated, erosion_kernel_final, iterations=5)
 
-    return eroded_final
+    return eroded_final.astype(np.uint8)
 
 
 def get_lines_dictionary(line_positions, lines, line_colors):
@@ -373,7 +440,8 @@ def get_contours_dictionary(contour_centroids, contour_colors, contour_areas,
     :param total_contour_count: total number of contours in frame
     :param total_contour_useful_area: total useful contour area in frame
     :param total_contour_useful_count: total number of useful contours in frame
-    :return:
+    :return: returns dictionary of contour centroids, colors, area, total area and useful area, and total contour and
+             useful contour count
     """
     contour_dict = {}
 
@@ -406,6 +474,21 @@ def get_contours_dictionary(contour_centroids, contour_colors, contour_areas,
     return contour_dict
 
 
+def get_big_celestial_dictionary(big_celestial_color, big_celestial_area):
+    """
+    Creates dictionary of extracted big celestial features and information.
+
+    :param big_celestial_color: median color of celestial object
+    :param big_celestial_area: total area of celestial object
+    :return: returns dictionary of big celestial median color and total area
+    """
+    return {
+        "big_celestial_total_area": big_celestial_area,
+        "big_celestial_median_red": big_celestial_color[2],
+        "big_celestial_median_green": big_celestial_color[1],
+        "big_celestial_median_blue": big_celestial_color[0]
+    }
+
 def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_interval=30,
                          output_plain_frames=False, output_processed_frames=False,
                          output_processed_video=False, output_processed_video_fps=1,
@@ -413,7 +496,8 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
                          dilation_iterations=0, dilation_size=5,
                          erosion_iterations=0, erosion_size=5,
                          contour_threshold_max=100000, contour_threshold_min=4,
-                         ignore_centroids_max=4, ignore_centroids_distance=200):
+                         ignore_centroids_max=4, ignore_centroids_distance=200,
+                         classification_model=None):
     """
     Processes video frames by keeping only frames according to an interval. Processed results can be output to video.
 
@@ -434,6 +518,7 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
     :param contour_threshold_min: min size for selected max contour (used for processing)
     :param ignore_centroids_max: max previous centroids to be considered to be ignored (used for processing)
     :param ignore_centroids_distance: max distance for a centroid to be counted as near (used for processing)
+    :param classification_model: classification model used for big celestial object detection (used for processing)
     """
     # open video object
     video = cv2.VideoCapture(os.path.join("videos", video_name))
@@ -474,6 +559,7 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
     # initialize data dataframes
     line_data = pd.DataFrame()
     contour_data = pd.DataFrame()
+    big_celestial_data = pd.DataFrame()
 
     while True:
         flag, frame_color = video.read()  # read frame from the video
@@ -503,7 +589,8 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
 
                 line_positions, lines, frame_draw = get_lines(frame_bw)
 
-                found_centroids, contour_colors, contour_areas, line_colors, \
+                found_centroids, contour_colors, contour_areas, line_colors,\
+                    big_celestial_color, big_celestial_area, \
                     total_contour_area, total_contour_count, \
                     total_contour_useful_area, total_contour_useful_count, \
                     frame_draw = object_handler(frame_bw, frame_color, frame_draw,
@@ -511,7 +598,8 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
                                                 contour_threshold_min=contour_threshold_min,
                                                 ignore_centroids=ignore_centroids,
                                                 ignore_centroids_distance=ignore_centroids_distance,
-                                                contours=contours, lines=lines, line_positions=line_positions)
+                                                contours=contours, lines=lines, line_positions=line_positions,
+                                                classification_model=classification_model)
 
                 # previous nearby centroids
                 if ignore_centroids is not None and found_centroids is not None:
@@ -536,6 +624,11 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
                                                        total_contour_useful_area, total_contour_useful_count)
                 contour_data = pd.concat([contour_data, pd.DataFrame([contour_dict])], ignore_index=True)
 
+                # save data for big celestial objects in processed frame
+                big_celestial_dict = get_big_celestial_dictionary(big_celestial_color, big_celestial_area)
+                big_celestial_data = pd.concat([big_celestial_data, pd.DataFrame([big_celestial_dict])],
+                                               ignore_index=True)
+
         frame_count += 1  # increment the frame counter
 
     # release video object and close windows
@@ -553,9 +646,8 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
 
         # save data for processed frames of video
         line_data.to_csv(os.path.join(output_path_data, "lines.csv"), index=False)
-
-        # save data for processed frames of video
         contour_data.to_csv(os.path.join(output_path_data, "contours.csv"), index=False)
+        big_celestial_data.to_csv(os.path.join(output_path_data, "big_celestials.csv"), index=False)
 
 
 def create_video(frames, output_video_path, fps=1, is_color=True):
@@ -593,7 +685,18 @@ if __name__ == "__main__":
     for idx, video in videos.iterrows():
         print("Processing video: " + video["Video Name"])
 
-        if video["Video Name"] == "A_Flight_to_HCG_40.mp4":
+        if video["Video Name"] == "Flight_to_AG_Carinae.mp4":
+            process_video_frames(video["Video Name"], video["Start Time"] * fps, video["End Time"] * fps,
+                                 frame_interval=30,
+                                 output_plain_frames=True, output_processed_frames=True,
+                                 output_processed_video=True, output_processed_video_fps=1,
+                                 black_and_white_threshold=26,
+                                 contour_threshold_max=100000, contour_threshold_min=4,
+                                 ignore_centroids_max=4, ignore_centroids_distance=200,
+                                 classification_model=model
+                                 )
+        """
+        elif video["Video Name"] == "A_Flight_to_HCG_40.mp4":
             process_video_frames(video["Video Name"], video["Start Time"] * fps, video["End Time"] * fps,
                                  frame_interval=30,
                                  output_plain_frames=False, output_processed_frames=True,
@@ -602,27 +705,8 @@ if __name__ == "__main__":
                                  dilation_iterations=2, dilation_size=5,
                                  erosion_iterations=0, erosion_size=5,
                                  contour_threshold_max=100000, contour_threshold_min=4,
-                                 ignore_centroids_max=3, ignore_centroids_distance=200
-                                 )
-
-        """
-        if video["Video Name"] == "A_Flight_to_HCG_40.mp4":
-            process_video_frames(video["Video Name"], video["Start Time"] * fps, video["End Time"] * fps,
-                                 frame_interval=30,
-                                 output_plain_frames=True, output_processed_frames=True,
-                                 output_processed_video=True, output_processed_video_fps=1,
-                                 black_and_white_threshold=26,
-                                 contour_threshold_max=100000, contour_threshold_min=4,
-                                 ignore_centroids_max=4, ignore_centroids_distance=200
-                                 )
-        elif video["Video Name"] == "Flight_to_AG_Carinae.mp4":
-            process_video_frames(video["Video Name"], video["Start Time"] * fps, video["End Time"] * fps,
-                                 frame_interval=30,
-                                 output_plain_frames=True, output_processed_frames=True,
-                                 output_processed_video=True, output_processed_video_fps=1,
-                                 black_and_white_threshold=26,
-                                 contour_threshold_max=100000, contour_threshold_min=4,
-                                 ignore_centroids_max=4, ignore_centroids_distance=200
+                                 ignore_centroids_max=3, ignore_centroids_distance=200,
+                                 classification_model=model
                                  )
         else:
             process_video_frames(video["Video Name"], video["Start Time"] * fps, video["End Time"] * fps,
