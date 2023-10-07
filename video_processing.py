@@ -7,18 +7,18 @@ from keras.models import load_model
 
 
 def black_and_white_video_frame(frame_color, black_and_white_threshold=26,
-                                dilation_iterations=2, dilation_size=5,
+                                dilation_iterations=0, dilation_size=5,
                                 erosion_iterations=0, erosion_size=5):
     """
     Returns black and white image from colored image with a certain threshold for values.
 
     :param frame_color: colored image
     :param black_and_white_threshold: max value for black values, rest is white
-    :return: returns black and white image
     :param dilation_iterations: iterations to run dilation on image, 0 to not run
     :param dilation_size: size of dilation matrix
     :param erosion_iterations: iterations to run erosion on image, 0 to not run
     :param erosion_size: size of erosion matrix
+    :return: returns black and white image
     """
     # convert to grayscale
     frame_gray = cv2.cvtColor(frame_color, cv2.COLOR_BGR2GRAY)
@@ -410,6 +410,8 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
                          output_plain_frames=False, output_processed_frames=False,
                          output_processed_video=False, output_processed_video_fps=1,
                          black_and_white_threshold=26,
+                         dilation_iterations=0, dilation_size=5,
+                         erosion_iterations=0, erosion_size=5,
                          contour_threshold_max=100000, contour_threshold_min=4,
                          ignore_centroids_max=4, ignore_centroids_distance=200):
     """
@@ -424,6 +426,10 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
     :param output_processed_video: outputs video created from processed frames to processed_videos directory if True
     :param output_processed_video_fps: frames per second for output video, default 1 (used with frame_interval 30)
     :param black_and_white_threshold: max value for black values, rest is white (used for processing)
+    :param dilation_iterations: iterations to run dilation on image, 0 to not run (used for processing)
+    :param dilation_size: size of dilation matrix (used for processing)
+    :param erosion_iterations: iterations to run erosion on image, 0 to not run (used for processing)
+    :param erosion_size: size of erosion matrix (used for processing)
     :param contour_threshold_max: max size for selected max contour (used for processing)
     :param contour_threshold_min: min size for selected max contour (used for processing)
     :param ignore_centroids_max: max previous centroids to be considered to be ignored (used for processing)
@@ -486,7 +492,12 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
 
             # if producing the processed video with processed frames
             if output_processed_video:
-                frame_bw = black_and_white_video_frame(frame_color, black_and_white_threshold=black_and_white_threshold)
+                frame_bw = black_and_white_video_frame(frame_color,
+                                                       black_and_white_threshold=black_and_white_threshold,
+                                                       dilation_iterations=dilation_iterations,
+                                                       dilation_size=dilation_size,
+                                                       erosion_iterations=erosion_iterations,
+                                                       erosion_size=erosion_size)
 
                 contours, _ = get_contours(frame_bw)
 
@@ -588,6 +599,8 @@ if __name__ == "__main__":
                                  output_plain_frames=False, output_processed_frames=True,
                                  output_processed_video=True, output_processed_video_fps=1,
                                  black_and_white_threshold=55,
+                                 dilation_iterations=2, dilation_size=5,
+                                 erosion_iterations=0, erosion_size=5,
                                  contour_threshold_max=100000, contour_threshold_min=4,
                                  ignore_centroids_max=3, ignore_centroids_distance=200
                                  )
