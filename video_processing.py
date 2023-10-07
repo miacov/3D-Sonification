@@ -215,6 +215,7 @@ def object_handler(frame, frame_color, frame_draw=None,
                    contour_threshold_max=100000, contour_threshold_min=4, max_num_contours=1,
                    ignore_centroids=None, ignore_centroids_distance=200,
                    contours=None, lines=None, line_positions=None, ignore_lines=True, num_lines=10,
+                   big_celestial_threshold=100000,
                    classification_model=None):
     """
     Processes features to extract:
@@ -241,6 +242,7 @@ def object_handler(frame, frame_color, frame_draw=None,
     :param num_lines: number of lines (used when creating the line array when None are given)
     :param classification_model: classification model used for big celestial object detection, jf None ignore big
                                  celestials
+    :param big_celestial_threshold: minimum size for a contour to be considered to be a big celestial
     :return: returns centroids, colors, max_contour_areas, line_contour_colors, total_contour_area, total_contour_count,
              total_contour_useful_area, total_contour_useful_count, frame_draw. The first 3 parameters are None if no
              max contour is selected
@@ -270,6 +272,8 @@ def object_handler(frame, frame_color, frame_draw=None,
     if classification_model is not None:
         frame_model = classification_model.predict(np.expand_dims(frame_color, axis=0))[0]
         frame_model = clear_classification(frame_model)  # clear classification
+    else:
+        frame_model = None
 
     touches_line_colors = []
     for line in range(num_lines):
@@ -285,7 +289,7 @@ def object_handler(frame, frame_color, frame_draw=None,
 
         # big celestial classification
         is_big_celestial = False
-        if classification_model is not None:
+        if frame_model is not None and big_celestial_threshold <= contour_area:
             is_big_celestial = check_contour_is_big_celestial(contour, classification_model,
                                                               frame, frame_model, frame_color, frame_draw)
             if is_big_celestial:
@@ -350,7 +354,7 @@ def object_handler(frame, frame_color, frame_draw=None,
             line_contour_colors.append(np.array((-1, -1, -1)))
 
     # get medians of contour colors for big celestials
-    if len(big_celestial_colors) == 0:
+    if len(big_celestial_colors) != 0:
         big_celestial_color = np.median(np.array(big_celestial_colors), axis=0).astype(int)
     else:
         big_celestial_color = np.array((-1, -1, -1))
@@ -490,6 +494,7 @@ def get_big_celestial_dictionary(big_celestial_color, big_celestial_area):
         "big_celestial_median_blue": big_celestial_color[0]
     }
 
+
 def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_interval=30,
                          output_plain_frames=False, output_processed_frames=False,
                          output_processed_video=False, output_processed_video_fps=1,
@@ -498,7 +503,7 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
                          erosion_iterations=0, erosion_size=5,
                          contour_threshold_max=100000, contour_threshold_min=4,
                          ignore_centroids_max=4, ignore_centroids_distance=200,
-                         classification_model=None):
+                         big_celestial_threshold=50000, classification_model=None):
     """
     Processes video frames by keeping only frames according to an interval. Processed results can be output to video.
 
@@ -519,6 +524,7 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
     :param contour_threshold_min: min size for selected max contour (used for processing)
     :param ignore_centroids_max: max previous centroids to be considered to be ignored (used for processing)
     :param ignore_centroids_distance: max distance for a centroid to be counted as near (used for processing)
+    :param big_celestial_threshold: minimum size for a contour to be considered to be a big celestial
     :param classification_model: classification model used for big celestial object detection (used for processing)
     """
     # open video object
@@ -600,6 +606,7 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
                                                 ignore_centroids=ignore_centroids,
                                                 ignore_centroids_distance=ignore_centroids_distance,
                                                 contours=contours, lines=lines, line_positions=line_positions,
+                                                big_celestial_threshold=big_celestial_threshold,
                                                 classification_model=classification_model)
 
                 # previous nearby centroids
@@ -682,7 +689,7 @@ if __name__ == "__main__":
     model = load_model("classifier.h5")
 
     fps = 30
-    videos = pd.read_csv("videos.csv")
+    videos = pd.read_csv(os.path.join("videos", "videos.csv"))
     for idx, video in videos.iterrows():
         print("Processing video: " + video["Video Name"])
 
@@ -694,7 +701,7 @@ if __name__ == "__main__":
                                  black_and_white_threshold=26,
                                  contour_threshold_max=100000, contour_threshold_min=4,
                                  ignore_centroids_max=4, ignore_centroids_distance=200,
-                                 classification_model=model
+                                 big_celestial_threshold=50000, classification_model=model
                                  )
         """
         elif video["Video Name"] == "A_Flight_to_HCG_40.mp4":

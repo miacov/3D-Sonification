@@ -183,7 +183,7 @@ if __name__ == "__main__":
 
     # get frames for training from all videos
     """
-    videos = pd.read_csv("videos.csv")
+    videos = pd.read_csv(os.path.join("videos", "videos.csv"))
     for idx, video in videos.iterrows():
         print("Processing video: " + video["Video Name"])
         frames, masks = process_extracted_video_frames(video["Video Name"])
