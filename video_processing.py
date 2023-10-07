@@ -70,7 +70,7 @@ def check_contour_line_overlap(contour, line_positions, frame, frame_draw=None):
     :return: returns the indexes of the lines that overlap with the contour from array of line positions
     """
     if frame_draw is None:
-        frame_draw = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame_draw = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
 
     # create an empty mask
     contour_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
@@ -103,7 +103,7 @@ def get_contours(frame, frame_draw=None):
     :return: returns contour objects and image with contours drawn on it
     """
     if frame_draw is None:
-        frame_draw = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame_draw = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
 
     # create contours from black and white image
     masked_array = np.ma.masked_where(frame > 255, frame)
@@ -127,7 +127,7 @@ def get_lines(frame, frame_draw=None, num_lines=10, line_width=5):
              for every line, and image with lines drawn on it
     """
     if frame_draw is None:
-        frame_draw = cv2.cvtColor(frame.copy(), cv2.COLOR_BGR2RGB)
+        frame_draw = cv2.cvtColor(frame.copy(), cv2.COLOR_GRAY2BGR)
 
     # segment width between lines (or at start and end)
     # 1 more segment than lines
@@ -185,7 +185,7 @@ def object_handler(frame, frame_color, frame_draw=None,
              max contour is selected
     """
     if frame_draw is None:
-        frame_draw = cv2.cvtColor(frame.copy(), cv2.COLOR_BGR2RGB)
+        frame_draw = cv2.cvtColor(frame.copy(), cv2.COLOR_GRAY2BGR)
     if contours is None:
         contours, _ = get_contours(frame, frame_draw)
     if (lines is None or line_positions is None) and ignore_lines:
@@ -294,6 +294,53 @@ def object_handler(frame, frame_color, frame_draw=None,
             total_contour_area, total_contour_count, total_contour_useful_area, total_contour_useful_count, frame_draw
 
 
+def get_lines_dictionary(line_positions, lines, line_colors):
+    """
+    Creates dictionary of extracted line features and information.
+
+    :param line_positions: array with start and end x positions of each line
+    :param lines: white pixel counts for every line array
+    :param line_colors: median color of contours touching a line for every line array
+    :return: returns dictionary of white pixel counts, line positions, and median colors
+    """
+    line_dict = {}
+
+    for idx, line in enumerate(lines):
+        line_choice = "_line" + str(idx)
+        line_dict["whitecount" + line_choice] = line
+        line_dict["start" + line_choice] = line_positions[idx][0]
+        line_dict["end" + line_choice] = line_positions[idx][1]
+        line_dict["median_red_contours_touching" + line_choice] = line_colors[idx][2]
+        line_dict["median_green_contours_touching" + line_choice] = line_colors[idx][1]
+        line_dict["median_blue_contours_touching" + line_choice] = line_colors[idx][0]
+
+    return line_dict
+
+
+def get_contours_dictionary(contour_centroids, contour_colors, contour_areas,
+                            total_contour_area, total_contour_count,
+                            total_contour_useful_area, total_contour_useful_count):
+    contour_dict = {}
+
+    # for each saved contour selected
+    for idx, contour in enumerate(contour_centroids):
+        contour_choice = "_contour" + str(idx)
+        contour_dict["x" + contour_choice] = contour[0]
+        contour_dict["y" + contour_choice] = contour[1]
+        contour_dict["median_red" + contour_choice] = contour_colors[idx][2]
+        contour_dict["median_green" + contour_choice] = contour_colors[idx][1]
+        contour_dict["median_blue" + contour_choice] = contour_colors[idx][0]
+        contour_dict["area" + contour_choice] = contour_areas[idx]
+
+    # add totals
+    contour_dict["total_area"] = total_contour_area
+    contour_dict["total_contour_count"] = total_contour_count
+    contour_dict["total_contour_useful_area"] = total_contour_useful_area
+    contour_dict["total_contour_useful_count"] = total_contour_useful_count
+
+    return contour_dict
+
+
 def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_interval=30,
                          output_plain_frames=False, output_processed_frames=False,
                          output_processed_video=False, output_processed_video_fps=1,
@@ -353,6 +400,10 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
     else:
         ignore_centroids = None
 
+    # initialize data dataframes
+    line_data = pd.DataFrame()
+    contour_data = pd.DataFrame()
+
     while True:
         flag, frame_color = video.read()  # read frame from the video
 
@@ -399,6 +450,16 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
                 if output_processed_frames:
                     cv2.imwrite(os.path.join(output_path_processed, str(used_frame_count) + ".png"), frame_draw)
 
+                # save data for lines in processed frame
+                line_dict = get_lines_dictionary(line_positions, lines, line_colors)
+                line_data = pd.concat([line_data, pd.DataFrame([line_dict])], ignore_index=True)
+
+                # save data for contours in processed frame
+                contour_dict = get_contours_dictionary(found_centroids, contour_colors, contour_areas,
+                                                       total_contour_area, total_contour_count,
+                                                       total_contour_useful_area, total_contour_useful_count)
+                contour_data = pd.concat([contour_data, pd.DataFrame([contour_dict])], ignore_index=True)
+
         frame_count += 1  # increment the frame counter
 
     # release video object and close windows
@@ -408,6 +469,17 @@ def process_video_frames(video_name, frame_start=0, frame_end=1000000, frame_int
     if output_processed_video:
         create_video(output_processed_video_frames, os.path.join(output_path_processed_video, "processed.mp4"),
                      fps=output_processed_video_fps)
+
+        output_path_data = os.path.join("data", video_name.replace(".mp4", ""))
+        if os.path.exists(output_path_data):
+            shutil.rmtree(output_path_data)
+        os.makedirs(output_path_data)
+
+        # save data for processed frames of video
+        line_data.to_csv(os.path.join(output_path_data, "lines.csv"), index=False)
+
+        # save data for processed frames of video
+        contour_data.to_csv(os.path.join(output_path_data, "contours.csv"), index=False)
 
 
 def create_video(frames, output_video_path, fps=1, is_color=True):
@@ -442,6 +514,18 @@ if __name__ == "__main__":
     videos = pd.read_csv("videos.csv")
     for idx, video in videos.iterrows():
         print("Processing video: " + video["Video Name"])
+
+        if video["Video Name"] == "Flight_to_AG_Carinae.mp4":
+            process_video_frames(video["Video Name"], video["Start Time"] * fps, video["End Time"] * fps,
+                                 frame_interval=30,
+                                 output_plain_frames=True, output_processed_frames=True,
+                                 output_processed_video=True, output_processed_video_fps=1,
+                                 black_and_white_threshold=26,
+                                 contour_threshold_max=100000, contour_threshold_min=4,
+                                 ignore_centroids_max=4, ignore_centroids_distance=200
+                                 )
+
+        """
         if video["Video Name"] == "A_Flight_to_HCG_40.mp4":
             process_video_frames(video["Video Name"], video["Start Time"] * fps, video["End Time"] * fps,
                                  frame_interval=30,
@@ -465,3 +549,4 @@ if __name__ == "__main__":
                                  frame_interval=30,
                                  output_plain_frames=False, output_processed_frames=False,
                                  output_processed_video=False)
+        """
