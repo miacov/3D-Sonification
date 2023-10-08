@@ -90,8 +90,8 @@ def create_star_midi_files(df, tempo=1):
     star_midi_file.addTempo(track=0, time=0, tempo=tempo)
     star_vel_lst = star_vel(df)
 
-    chord_notes_lst = scale_notes([2, 3, 4])
-    star_notes_lst = scale_notes([4, 5])
+    chord_notes_lst = scale_notes([2, 3, 4], phrygian)
+    star_notes_lst = scale_notes([4, 5], phrygian)
     root = 69
 
     for index, star in df.iterrows():
@@ -173,48 +173,29 @@ def bigCelestialObject_midi(df):
     big_object_vel(df)
 
 
-def background_music(my_midi_file, notes_list, line_vel, root, d, tempo=1):
-    time_index = len(line_vel.index)
+def background_music(notes_list, time_index, root, d, tempo):
     note_index = notes_list.index(root)
     dt = d / 8
+    my_midi_file = MIDIFile(1)
+    my_midi_file.addTempo(track=0, time=0, tempo=tempo)
+    vol = 50
     for t in range(0, time_index, d):
-        my_midi_file.addTempo(track=0, time=0, tempo=tempo)
-        my_midi_file.addNote(track=0, channel=0, pitch=root, duration=d, volume=50, time=t)
-        my_midi_file.addNote(track=0, channel=0, pitch=notes_list[note_index + 1], duration=d, volume=50,
+        my_midi_file.addNote(track=0, channel=0, pitch=root, duration=dt, volume=50, time=t)
+        my_midi_file.addNote(track=0, channel=0, pitch=notes_list[note_index + 1], duration=dt, volume=vol,
                              time=t + 1 * dt)
-        my_midi_file.addNote(track=0, channel=0, pitch=notes_list[note_index + 3], duration=d, volume=50,
+        my_midi_file.addNote(track=0, channel=0, pitch=notes_list[note_index + 3], duration=dt, volume=vol,
                              time=t + 2 * dt)
-        my_midi_file.addNote(track=0, channel=0, pitch=notes_list[note_index + 6], duration=d, volume=50,
+        my_midi_file.addNote(track=0, channel=0, pitch=notes_list[note_index + 6], duration=dt, volume=vol,
                              time=t + 3 * dt)
-        my_midi_file.addNote(track=0, channel=0, pitch=notes_list[note_index + 4], duration=d, volume=50,
+        my_midi_file.addNote(track=0, channel=0, pitch=notes_list[note_index + 4], duration=dt, volume=vol,
                              time=t + 4 * dt)
-        my_midi_file.addNote(track=0, channel=0, pitch=notes_list[note_index + 3], duration=d, volume=50,
+        my_midi_file.addNote(track=0, channel=0, pitch=notes_list[note_index + 3], duration=dt, volume=vol,
                              time=t + 5 * dt)
-        my_midi_file.addNote(track=0, channel=0, pitch=notes_list[note_index + 1], duration=d, volume=50,
+        my_midi_file.addNote(track=0, channel=0, pitch=notes_list[note_index + 1], duration=dt, volume=vol,
                              time=t + 6 * dt)
-        my_midi_file.addNote(track=0, channel=0, pitch=root, duration=d, volume=50, time=t + 7 * dt)
+        my_midi_file.addNote(track=0, channel=0, pitch=root, duration=dt, volume=vol, time=t + 7 * dt)
     with open(os.path.join("midi", "background_music.mid"), "wb") as midi_file:
         my_midi_file.writeFile(midi_file)
-
-
-def scale_notes(octave_select):
-    a_phrygian = []
-    a_phrygian_octave_2 = [45, 46, 48, 50, 52, 53, 55]  # A2 to G2
-    a_phrygian_octave_3 = [57, 58, 60, 62, 64, 65, 67]  # A3 to G3
-    a_phrygian_octave_4 = [69, 70, 72, 74, 76, 77, 79]  # A4 to G4
-    a_phrygian_octave_5 = [81, 82, 84, 86, 88, 89, 91]  # A5 to G5
-    a_phrygian_octave_6 = [93, 94, 96, 98, 100, 101, 103]  # A6 to G6
-    if 2 in octave_select:
-        a_phrygian.extend(a_phrygian_octave_2)
-    if 3 in octave_select:
-        a_phrygian.extend(a_phrygian_octave_3)
-    if 4 in octave_select:
-        a_phrygian.extend(a_phrygian_octave_4)
-    if 5 in octave_select:
-        a_phrygian.extend(a_phrygian_octave_5)
-    if 6 in octave_select:
-        a_phrygian.extend(a_phrygian_octave_6)
-    return a_phrygian
 
 
 def chords(my_midi_file, scale_notes, root, d, t, velocity=100):
@@ -324,6 +305,36 @@ def get_nebula_ripple(df):
     nebula_ripple_df['time'] = df.index
     nebula_ripple_df.to_csv('big_celestials_ripples.csv', index=False)
 
+def phrygian(root):
+    phrygian_notes = [root, root+1, root+3, root+5, root+7, root+8, root+10]
+    return phrygian_notes
+
+def locrian(root):
+    locrian_notes = [root, root+1, root+3, root+5, root+7, root+8, root+10]
+    return locrian_notes
+
+def lydian(root):
+    lydian_notes = [root, root+2, root+4, root+6, root+7, root+9, root+11]
+    return lydian_notes
+
+def dorian(root):
+    dorian_notes = [root, root+2, root+3, root+5, root+7, root+9, root+10]
+    return dorian_notes
+
+def scale_notes(octave_select, scale):
+    a_phrygian = []
+    if 2 in octave_select:
+        a_phrygian.extend(scale(45))
+    if 3 in octave_select:
+        a_phrygian.extend(scale(57))
+    if 4 in octave_select:
+        a_phrygian.extend(scale(69))
+    if 5 in octave_select:
+        a_phrygian.extend(scale(81))
+    if 6 in octave_select:
+        a_phrygian.extend(scale(93))
+    return a_phrygian
+
 
 if __name__ == "__main__":
     if os.path.exists("midi"):
@@ -333,6 +344,7 @@ if __name__ == "__main__":
     notes_list_str = ['G3', 'A3', 'B3', 'D4', 'E4', 'G4', 'A4', 'B4', 'D5', 'E5']
     notes_list_int = [45, 46, 48, 50, 52, 53, 55, 57, 58, 60, 62, 64, 65, 67]
     note_code = notes_to_midi(['A2', 'A#2', 'C3', 'D3', 'E3', 'F3', 'G3', 'A4'])
+    back_notes_list = scale_notes([4, 5], phrygian)
 
     # c lydian
     # C1, C2, G2, C3, E3,
@@ -345,14 +357,34 @@ if __name__ == "__main__":
 
     ## STARS
     df_stars = import_data('contours.csv', 'data/Flight_to_AG_Carinae')
-    create_star_midi_files(df_stars, tempo=1)
+    create_star_midi_files(df_stars, tempo=60)
 
     ## NEBULA
     df_nebula = import_data('big_celestials.csv', 'data/Flight_to_AG_Carinae')
     nebula_midi_file(notes_list_int, big_object_vel(df_nebula), d=1, progression=True, tempo=1)
 
-    #background_music()
+    background_music(notes_list=back_notes_list, time_index=30, root=69, d=2, tempo=1)
 
-    #get_stars_ripples(df_stars)
-    #get_lines_ripples(df_lines)
-    #get_nebula_ripple(df_nebula)
+    get_stars_ripples(df_stars)
+    get_lines_ripples(df_lines)
+    get_nebula_ripple(df_nebula)
+
+    """
+    ## LINES
+    df_lines = import_data('lines.csv', 'data/A_Flight_to_HCG_40')
+    create_lines_midi_file(df_lines, n_lines=10, threshold=200, notes_lst=notes_list_str, tempo=1)
+
+    ## STARS
+    df_stars = import_data('contours.csv', 'data/A_Flight_to_HCG_40')
+    create_star_midi_files(df_stars, tempo=60)
+
+    ## NEBULA
+    df_nebula = import_data('big_celestials.csv', 'data/A_Flight_to_HCG_40')
+    nebula_midi_file(notes_list_int, big_object_vel(df_nebula), d=1, progression=True, tempo=1)
+
+    background_music(notes_list=back_notes_list, time_index=30, root=69, d=2, tempo=1)
+
+    get_stars_ripples(df_stars)
+    get_lines_ripples(df_lines)
+    get_nebula_ripple(df_nebula)
+    """

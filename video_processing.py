@@ -703,19 +703,21 @@ if __name__ == "__main__":
                                  ignore_centroids_max=4, ignore_centroids_distance=200,
                                  big_celestial_threshold=50000, classification_model=model
                                  )
-        """
+
         elif video["Video Name"] == "A_Flight_to_HCG_40.mp4":
             process_video_frames(video["Video Name"], video["Start Time"] * fps, video["End Time"] * fps,
                                  frame_interval=30,
-                                 output_plain_frames=False, output_processed_frames=True,
+                                 output_plain_frames=True, output_processed_frames=True,
                                  output_processed_video=True, output_processed_video_fps=1,
-                                 black_and_white_threshold=55,
+                                 black_and_white_threshold=80,
                                  dilation_iterations=2, dilation_size=5,
                                  erosion_iterations=0, erosion_size=5,
-                                 contour_threshold_max=100000, contour_threshold_min=4,
-                                 ignore_centroids_max=3, ignore_centroids_distance=200,
+                                 contour_threshold_max=100000, contour_threshold_min=50,
+                                 ignore_centroids_max=3, ignore_centroids_distance=250,
+                                 big_celestial_threshold=3500,
                                  classification_model=model
                                  )
+        """
         else:
             process_video_frames(video["Video Name"], video["Start Time"] * fps, video["End Time"] * fps,
                                  frame_interval=30,
