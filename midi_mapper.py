@@ -85,9 +85,9 @@ def star_vel(df):
     return star_vel
 
 
-def create_star_midi_files(df):
+def create_star_midi_files(df, tempo=1):
     star_midi_file = MIDIFile(1)
-    star_midi_file.addTempo(track=0, time=0, tempo=1)
+    star_midi_file.addTempo(track=0, time=0, tempo=tempo)
     star_vel_lst = star_vel(df)
 
     chord_notes_lst = scale_notes([2, 3, 4])
@@ -107,60 +107,57 @@ def create_star_midi_files(df):
         star_midi_file.writeFile(f)
 
 
-def nebula_midi_file(chord_notes_list, big_celestial_volumes, d, proggression=False, time_idx=30):
-    if not proggression:
+def nebula_midi_file(chord_notes_list, big_celestial_volumes, d, progression=False, time_idx=30, tempo=1):
+    my_midi_file = MIDIFile(1)
+    my_midi_file.addTempo(track=0, time=0, tempo=tempo)
+    if not progression:
         time_index = time_idx
-        my_midi_file = MIDIFile(1)
-        my_midi_file.addTimeSignature(numerator=4, denominator=4, clocks_per_tick=24, notes_per_quarter=8, time=0,
-                                      track=0)
         root = 45
-        my_midi_file.addTempo(track=0, time=0, tempo=80)
         if time_index % 4 == 0:
             for t in range(0, time_index + 1, 4):
                 chords(my_midi_file, chord_notes_list, root, d, t)
-        elif time_index % 3 == 0:
-            for t in range(0, time_index + 1, 3):
-                chords(my_midi_file, chord_notes_list, root, d, t)
+        #elif time_index % 3 == 0:
+            #for t in range(0, time_index + 1, 3):
+                #chords(my_midi_file, chord_notes_list, root, d, t)
         else:
             for t in range(0, time_index + 1, 2):
                 chords(my_midi_file, chord_notes_list, root, d, t)
     else:
         time_index = time_idx
-        my_midi_file = MIDIFile(1)
         root = 45
         first_index = chord_notes_list.index(root)
-        my_midi_file.addTempo(track=0, time=0, tempo=60)
-        if time_index % 5 == 0:
-            for t in range(0, time_index, 5):
+        if time_index % 10 == 0:
+            for t in range(0, time_index, 5 * d):
+                velocity = int(big_celestial_volumes.iloc[t] * 100)
+                chords(my_midi_file, chord_notes_list, root, d, t, velocity=velocity)
+                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 2], d, t + d,velocity=velocity)  # b3
+                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 1], d, t + 2*d, velocity=velocity)  # b2
+                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 5], d, t + 3*d,velocity=velocity)  # 6
+                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 6], d, t +4*d, velocity=velocity)  # 6
+        elif time_index % 4 == 0:
+            for t in range(0, time_index, 4 * d):
                 velocity = int(big_celestial_volumes.iloc[t] * 100)
                 chords(my_midi_file, chord_notes_list, root, 1, t, velocity=velocity)
-                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 2], d, t + 1, velocity=velocity)  # b3
-                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 1], d, t + 2, velocity=velocity)  # b2
-                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 5], d, t + 3, velocity=velocity)  # 6
-                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 6], d, t + 4, velocity=velocity)  # 7
-        if time_index % 4 == 0:
-            for t in range(0, time_index, 4):
-                velocity = int(big_celestial_volumes.iloc[t] * 100)
-                chords(my_midi_file, chord_notes_list, root, 1, t, velocity=velocity)
-                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 3], d, t + 1, velocity=velocity)  # 4
-                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 2], d, t + 2, velocity=velocity)  # b3
-                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 6], d, t + 3, velocity=velocity)  # 7
+                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 3], d, t + 1*d,velocity=velocity)  # 4
+                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 2], d, t + 2*d,velocity=velocity)  # b3
+                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 6], d, t + 3*d, velocity=velocity)  # 7
+
         elif time_index % 3 == 0:
-            for t in range(0, time_index, 3):
+            for t in range(0, time_index, 3 * d):
                 velocity = int(big_celestial_volumes.iloc[t] * 100)
-                chords(my_midi_file, chord_notes_list, root, 1, t, velocity=velocity)
-                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 5], d, t + 1, velocity=velocity)  # b6
-                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 4], d, t + 2, velocity=velocity)  # 4
+                chords(my_midi_file, chord_notes_list, root, d, t, velocity=velocity)
+                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 5], d, t+1*d, velocity=velocity)  # b6
+                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 4], d, t+2*d, velocity=velocity)  # 4
+
         else:
-            for t in range(0, time_index, 2):
+            for t in range(0, time_index, 2 * d):
                 velocity = int(big_celestial_volumes.iloc[t] * 100)
-                chords(my_midi_file, chord_notes_list, root, 1, t, velocity=velocity)
-                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 1], d, t + 1, velocity=velocity)  # b2
+                chords(my_midi_file, chord_notes_list, root, d, t, velocity=velocity)
+                chords(my_midi_file, chord_notes_list, chord_notes_list[first_index + 1], d, t+d, velocity=velocity)  # b2
 
     with open(os.path.join("midi", 'nebula_midi' + '.mid'), "wb") as f:
         my_midi_file.writeFile(f)
     #return my_midi_file
-
 
 
 def big_object_vel(df):
@@ -176,12 +173,12 @@ def bigCelestialObject_midi(df):
     big_object_vel(df)
 
 
-def background_music(my_midi_file, notes_list, line_vel, root, d):
+def background_music(my_midi_file, notes_list, line_vel, root, d, tempo=1):
     time_index = len(line_vel.index)
     note_index = notes_list.index(root)
     dt = d / 8
     for t in range(0, time_index, d):
-        my_midi_file.addTempo(track=0, time=0, tempo=80)
+        my_midi_file.addTempo(track=0, time=0, tempo=tempo)
         my_midi_file.addNote(track=0, channel=0, pitch=root, duration=d, volume=50, time=t)
         my_midi_file.addNote(track=0, channel=0, pitch=notes_list[note_index + 1], duration=d, volume=50,
                              time=t + 1 * dt)
@@ -262,6 +259,72 @@ def melody_green(my_midi_file, star_notes, root, d, t, velocity):
                          time=t + 3 / 4)  # 1
 
 
+def get_stars_ripples(df):
+    stars_ripple_df = pd.DataFrame()
+    star_vel_lst = star_vel(df)
+
+    for idx, value in enumerate(star_vel_lst):
+        if value > 4000:
+            star_vel_lst[idx] = 0
+            star_vel_lst[idx] = max(star_vel_lst)
+    star_vel_lst = norm_scale(star_vel_lst, 0, np.amax(star_vel_lst.values), 0, 127)
+    stars_ripple_df["x"] = df['x_contour0']
+    stars_ripple_df["y"] = df['y_contour0']
+    stars_ripple_df["colour"] = '(255,255,255)'
+    stars_ripple_df['velocity'] = star_vel_lst
+    stars_ripple_df['time'] = df.index
+    stars_ripple_df.to_csv('contour_ripples.csv', index=False)
+
+
+def get_lines_ripples(df, n_lines=10):
+    lines_ripple_df = pd.DataFrame()
+    line_vel_high, line_vel_low = line_vel_midi(df, n_lines=10, threshold=200)
+    #print(line_vel_high, line_vel_low)
+
+    # Iteration through values
+    for row_index, row in df.iterrows():
+        for line_num in range(n_lines):
+            row_lines_ripple_df = dict()
+
+            # Line values for low and high threshold
+            line_type = [line_vel_high['line' + str(line_num)][row_index],
+                         line_vel_low['line' + str(line_num)][row_index]]
+
+            # If both thresholds are zero skip the input
+            if max(line_type) == 0:
+                pass
+            else:
+                # Add common values
+                line_hit = line_type.index(max(line_type))
+                row_lines_ripple_df["x"] = (row['end_line' + str(line_num)] + row['start_line' + str(line_num)]) / 2
+                row_lines_ripple_df["y"] = -1
+                row_lines_ripple_df['time'] = row_index
+
+                # Add high values
+                if line_hit == 0:  # HIGH ENTRY
+                    row_lines_ripple_df["colour"] = '(0,0,255)'
+                    row_lines_ripple_df['velocity'] = max(line_type)
+
+                # Add low values
+                else:
+                    row_lines_ripple_df["colour"] = '(255,0,0)'
+                    row_lines_ripple_df['velocity'] = max(line_type)
+                lines_ripple_df = pd.concat([lines_ripple_df, pd.DataFrame([row_lines_ripple_df])], ignore_index=True)
+    lines_ripple_df.to_csv('line_ripples.csv', index=False)
+
+
+def get_nebula_ripple(df):
+    nebula_ripple_df = pd.DataFrame()
+    bco_vel = big_object_vel(df)
+    bco_vel = norm_scale(bco_vel, 0, np.amax(bco_vel.values), 0, 127)
+    nebula_ripple_df["x"] = -np.ones(len(df)).astype(int)
+    nebula_ripple_df["y"] = -1
+    nebula_ripple_df["colour"] = '(0,255,255)'
+    nebula_ripple_df['velocity'] = bco_vel
+    nebula_ripple_df['time'] = df.index
+    nebula_ripple_df.to_csv('big_celestials_ripples.csv', index=False)
+
+
 if __name__ == "__main__":
     if os.path.exists("midi"):
         shutil.rmtree("midi")
@@ -277,15 +340,19 @@ if __name__ == "__main__":
     # G5, A5, B5, D6, E6, F  # 6, G6, A6
 
     ## LINES
-    df = import_data('lines.csv', 'data/Flight_to_AG_Carinae')
-    create_lines_midi_file(df, n_lines=10, threshold=200, notes_lst=notes_list_str, tempo=1)
+    df_lines = import_data('lines.csv', 'data/Flight_to_AG_Carinae')
+    create_lines_midi_file(df_lines, n_lines=10, threshold=200, notes_lst=notes_list_str, tempo=1)
 
     ## STARS
-    df = import_data('contours.csv', 'data/Flight_to_AG_Carinae')
-    create_star_midi_files(df)
+    df_stars = import_data('contours.csv', 'data/Flight_to_AG_Carinae')
+    create_star_midi_files(df_stars, tempo=1)
 
     ## NEBULA
-    df = import_data('big_celestials.csv', 'data/Flight_to_AG_Carinae')
-    df = big_object_vel(df)
+    df_nebula = import_data('big_celestials.csv', 'data/Flight_to_AG_Carinae')
+    nebula_midi_file(notes_list_int, big_object_vel(df_nebula), d=1, progression=True, tempo=1)
 
-    nebula_midi_file(notes_list_int, df, d=1, proggression=True)
+    #background_music()
+
+    #get_stars_ripples(df_stars)
+    #get_lines_ripples(df_lines)
+    #get_nebula_ripple(df_nebula)
