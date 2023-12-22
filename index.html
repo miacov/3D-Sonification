@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sound Wave</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+  
+    <style>
+
+        .hideme {
+            transform: translateY(-100%);
+
+        }
+
+        .showme {
+            transform: translateY(0);
+            
+        }
+
+        body, html, .outterclass {
+            height: 100%;
+        }
+
+        .ninety {
+            height: 90%;
+        }
+
+        .ten {
+            height: 10%;
+        }
+
+    </style>
+</head>
+  <body class="bg-black">
+
+    <div id="about-btn" class="absolute text-xl py-1 cursor-pointer w-32 left-0 right-0 text-center mx-auto bg-white text-black rounded-b">
+        About
+    </div>
+
+    <div id="about" style="z-index:100;" class="absolute overflow-y-scroll hideme transition-all duration-500 w-full h-screen bg-black/90">
+        <p class="text-white whitespace-pre">
+            DATA MAPPING 
+            The exported data from the visual processing were passed to mapping functions. These functions had 
+            the aim to map the visual data of the celestial objects to musical elements and finally music files.
+            
+            LINES
+            As mentioned in the visual processing section, 10 lines were created along the horizontal axis of the frame. 
+            These lines were keeping track of the white pixel count that was flowing through them. A note was assigned
+            to each line that would activate if the white pixel count was above a preset low threshold. These white pixel
+            counts where being measured once per second.
+            
+            Normalization details
+            
+            For the purpose of optimizing the normalization of the data, an additional threshold was introduced to split
+            the lines into high threshold lines (high white pixel count) and low threshold lines (low white pixel count).
+            For the high threshold lines an inverted normalization was applied while for the low threshold lines a normal normalization was applied.
+            
+            Mapping
+            White pixel count => Amplitude of the selected line
+            
+            Line ID => Note corresponding to the specific line
+            
+            High threshold lines and low threshold lines were mapped to a different instrument in the music production phase.
+            
+            
+            STARS
+            Once per second, a star was identified and was passed down to the mapping functions. In the mapping functions each star was
+            distinguished by its median RGB color. Each color (red, green and blue) had a unique melody and was being played if detected.
+            The amplitude of the melody's volume was the normalized size of the selected star.
+            
+            
+            OTHER CELESTIAL OBJECTS
+            As for the time being, the AI developed was able to distinguish between "Star" and "Other Celestial Body".
+            The "Other Celestial Body" entity was mapped similarly with stars. Amplitude of the outgoing signal was
+            equivalent to its normalized size.
+            
+            
+            
+            MUSIC SELECTION 
+            For the music selection, the team opted to connect the music to convert a specific emotional scale.
+            The root note was selected to be A.
+            
+            
+            STAR MELODIES
+            As mentioned in the previous section each RGB colored star had a different melody attached to it.
+            The melody tension scheme was influenced from the psychology each color conveys.
+            
+            Red melody: Creates tension.
+            
+            Blue melody: Slight release of tension.
+            
+            Green melody: Complete resolution of tension back to the root note.
+            
+            
+            LINE MUSICAL SELECTION
+            The lines act as guitar strings and play a note in the scale the user selects.
+            The scale is increasing from left to right.
+            
+            
+            OTHER CELESTIAL OBJECTS
+            The celestial objects have a choice of chord progressions that is set depending on
+            the number of frames the video has.
+            The choices include whether the frames are divisible by 5,4,3 or 2 and choose the
+            chord progression based on that. Since most of the stars were much smaller than the highlighted
+            celestial body, the celestial body was chosen to play the bass to imply an emotion of massiveness.
+            
+            
+            VISUAL EFFECTS 
+            Some visual effects were applied to the video to help the user navigate through the melody.
+            They are used to give a point of reference and understanding on the origin of the musical elements
+            
+            
+            WEBSITE 
+            A website was created to give the opportunity to the user to filter out the distinct sounds and navigate through the video library.
+            
+            Future considerations include a fully automated website where the user can import a video, choose between
+            the different emotional moods and instruments, and be able to create their own masterpiece.
+            
+            
+            
+            TECHNICAL DETAILS 
+            CODING
+            The project was written in python, javascript, css, html and used the following libraries:
+            
+            Python
+            
+            shutil
+            json
+            opencv
+            numpy
+            pandas
+            tensorflow
+            keras
+            librosa
+            midiutil
+            
+            
+            MUSIC PRODUCTION/ EDITING
+            The music production from midi files to .mp4 tracks were processed in FL Studio. The merge of the videos and the music was done in Adobe Premiere Pro.
+        
+        </p>
+        <div class="text-xl py-1 bottom-0 cursor-pointer w-32 left-0 right-0 text-center mx-auto bg-white text-black rounded-t" id="close-btn">
+            Close
+        </div>
+    </div>
+
+    <div class="absolute top-0 left-6" role="tablist">
+        <h2 class="text-center text-3xl font-bold mb-4 mt-2 text-white">Sound Wave</h2>
+
+        <div id="firstvideo" onclick="select(event)" class="mx-auto rounded text-white hover:bg-white/30 border border-white px-4 text-center py-2 nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home-tab-pane" type="button" role="tab" aria-controls="home-tab-pane" aria-selected="true">Flight to AG Carinae</div>
+        
+        <div id="visualization1" class="cursor-pointer mt-1 text-blue-500">Mapping Visualization</div>
+
+        <div id="version1video1" class="hidden mt-1 text-slate-200 cursor-pointer">Version 1</div>
+
+        
+        <div id="version2video1" class="hidden mt-1 text-slate-200 cursor-pointer">Version 2</div>
+
+        <div id="version3video1" class="hidden mt-1 text-slate-200 cursor-pointer">Version 3</div>
+
+        <div id="version4video1" class=" hidden mt-1 text-slate-200 cursor-pointer">Version 3</div>
+
+        <div id="secondvideo" onclick="select(event)" class="hidden mx-auto rounded text-white mt-4 hover:bg-white/30 border border-white px-4 text-center py-2 nav-link" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile-tab-pane" type="button" role="tab" aria-controls="profile-tab-pane" aria-selected="false">A Flight To HCG 40</div>    
+    
+
+        <div id="visualization2" class="hidden mt-1 text-blue-500">Mapping Visualization</div>
+
+        <div id="version1video2" class="hidden mt-1 text-slate-200 cursor-pointer">Version 1</div>
+
+        
+        <div id="version2video2" class="hidden mt-1 text-slate-200 cursor-pointer">Version 2</div>
+
+        <div id="version3video2" class="hidden mt-1 text-slate-200 cursor-pointer">Version 3</div>
+
+        <div id="version4video2" class="hidden mt-1 text-slate-200 cursor-pointer">Version 3</div>
+
+    </div>
+
+    <div class="absolute bottom-6 left-0" role="tablist">
+        <h2 class="text-lg text-white">Click to add or remove instruments</h2>
+
+
+    </div>
+
+    <div class="outterclass">
+
+        <div class="">
+            <audio id="high">
+                <source src="" type="audio/wav">
+              Your browser does not support the audio element.
+            </audio>
+
+            <audio id="low">
+                <source src="" type="audio/wav">
+              Your browser does not support the audio element.
+            </audio>
+
+            <audio id="nebula">
+                <source src="" type="audio/wav">
+              Your browser does not support the audio element.
+            </audio>
+
+            <audio id="star">
+                <source src="" type="audio/wav">
+              Your browser does not support the audio element.
+            </audio>
+			
+			<audio id="backg">
+                <source src="" type="audio/wav">
+              Your browser does not support the audio element.
+            </audio>
+
+        </div>
+
+
+        
+
+        
+
+        <div class="flex w-full ninety">
+            
+            <div class="w-full flex justify-center align-middle">
+    
+                <div class="tab-content text-white self-center" id="myTabContent">
+                    <div class="tab-pane fade show active rounded overflow-hidden" id="home-tab-pane" role="tabpanel" aria-labelledby="home-tab" tabindex="0">
+                        <!-- <iframe width="900" height="550"
+                        src="https://www.youtube.com/embed/1MzFfHSTOBM">
+                        </iframe> -->
+
+                        <video id="video1" width="1000" height="750" controls>
+                            <source src="https://raw.githubusercontent.com/miacov/3D-Sonification/main/videos/Flight_to_AG_Carinae.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+   
+
+                    </div>
+                    <div class="tab-pane fade rounded overflow-hidden" id="profile-tab-pane" role="tabpanel" aria-labelledby="profile-tab" tabindex="0">
+                        <video id="video2" width="750" height="400" controls>
+                            <source src="https://raw.githubusercontent.com/miacov/3D-Sonification/main/videos/A_Flight_to_HCG_40.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+
+                  </div>
+            </div>
+    
+        </div>
+
+        <div class="w-full flex justify-center ten text-white">
+            <div class="">
+                
+                <div id="low-btn" onclick="handler(event);" tar="low" class="inline-block cursor-pointer my-1 px-3 py-1 text-lg border border-white rounded">Lows</div>
+                <div id="high-btn" onclick="handler(event);" tar="high" class="inline-block cursor-pointer my-1 px-3 py-1 text-lg border border-white rounded">Highs</div>
+                <div id="nebula-btn" onclick="handler(event);" tar="nebula" class="inline-block cursor-pointer my-1 px-3 py-1 text-lg border border-white rounded">Nebula</div>
+                <div id="stars-btn" onclick="handler(event);" tar="star" class="inline-block cursor-pointer my-1 px-3 py-1 text-lg border border-white rounded">Stars</div>
+				<div id="backg-btn" onclick="handler(event);" tar="backg" class="inline-block cursor-pointer my-1 px-3 py-1 text-lg border border-white rounded">Background (Extra)</div>
+
+            </div>
+            
+            
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+  
+    <script>
+
+        let audioSources = {
+            high: "https://raw.githubusercontent.com/miacov/3D-Sonification/main/music/Flight_to_AG_Carinae/Version1/Normal/highthresh.wav",
+            low: "https://raw.githubusercontent.com/miacov/3D-Sonification/main/music//Flight_to_AG_Carinae/Version1/Normal/lowthresh.wav",
+            nebula: "https://raw.githubusercontent.com/miacov/3D-Sonification/main/music//Flight_to_AG_Carinae/Version1/Normal/nebula.wav",
+            star: "https://raw.githubusercontent.com/miacov/3D-Sonification/main/music/Flight_to_AG_Carinae/Version1/Normal/stars.wav",
+			backg: "https://raw.githubusercontent.com/miacov/3D-Sonification/main/music/Flight_to_AG_Carinae/Version1/Normal/bgmusic.wav",
+        }
+
+
+        let videos = {
+            video1: document.getElementById("video1"),
+            video2: document.getElementById("video2")
+        }
+
+        let sources = {
+            version1: {
+                low: '',
+                high: '',
+                nebula: '',
+                star: '',
+				backg: ''
+            },
+            version2: {
+                low: '',
+                high: '',
+                nebula: '',
+                star: '',
+				backg: ''
+            },
+            version3: {
+                low: '',
+                high: '',
+                nebula: '',
+                star: '',
+				backg: ''
+            },
+            version4: {
+                low: '',
+                high: '',
+                nebula: '',
+                star: '',
+				backg: ''
+            }
+        }
+
+
+        let playing = {
+            high: false,
+            low: false,
+            nebula: false,
+            star: false,
+			backg: false
+        }
+
+        document.getElementById("version1video1").addEventListener("click", () => {
+
+            for (let item in players) {
+                players[item].pause()
+            }
+
+            for (let item in players) {
+                players[item].src="";
+            }
+
+            videos['video1'].pause();
+            videos['video1'].currentTime = 0;
+            videos['video1'].pause();
+
+
+
+        });
+
+
+        document.getElementById("visualization1").addEventListener("click", () => {
+
+            for (let item in players) {
+                players[item].currentTime = 0;
+                players[item].pause()
+            }
+
+            videos['video1'].pause();
+            videos['video1'].src = 'https://raw.githubusercontent.com/miacov/3D-Sonification/main/processed_videos/Flight_to_AG_Carinae/presentation.mp4';
+            videos['video1'].pause();
+
+
+
+        });
+
+        document.getElementById("version2video1").addEventListener("click", () => {
+
+            for (let item in players) {
+                players[item].pause()
+            }
+
+            for (let item in players) {
+                players[item].src="";
+            }
+
+            videos['video1'].pause();
+            videos['video1'].currentTime = 0;
+            videos['video1'].pause();
+
+
+
+        });
+
+        document.getElementById("version2video1").addEventListener("click", () => {
+
+            for (let item in players) {
+                players[item].pause()
+            }
+
+            for (let item in players) {
+                players[item].src="";
+            }
+
+            videos['video1'].pause();
+            videos['video1'].currentTime = 0;
+            videos['video1'].pause();
+
+        });
+
+        let videoPlaying = false;
+
+        let total = 0;
+        
+        let video = document.getElementById("video1");
+
+        video.addEventListener("pause",() => {
+            
+            for (key in playing) {
+                if (playing[key]) {
+                    players[key].pause();
+                }
+            }
+
+            videoPlaying = false;
+        });
+
+        video.addEventListener("play",() => {
+            for (key in playing) {
+                if (playing[key]) {
+                    players[key].play();
+                }
+            }   
+
+            videoPlaying = true;
+        });
+
+        video.addEventListener("seeked", () => {
+            // video.pause();
+
+            for (item in players) {
+                players[item].pause();
+            }
+            for (key in playing) {
+                if (playing[key]) {
+                    players[key].currentTime = video.currentTime;
+                }
+            }   
+
+            video.play();
+            videoPlaying = true;
+            for (key in playing) {
+                if (playing[key]) {
+                    players[key].play();
+                }
+            }   
+        });
+
+        let buttons = {
+            low: document.getElementById("low-btn"),
+            high: document.getElementById("high-btn"),
+            nebula: document.getElementById("nebula-btn"),
+            star: document.getElementById("stars-btn"),
+			backg: document.getElementById("backg-btn")
+        }
+
+        let players = {
+            high: document.getElementById("high"),
+            low: document.getElementById("low"),
+            nebula: document.getElementById("nebula"),
+            star: document.getElementById("star"),
+			backg: document.getElementById("backg")
+        }
+
+        for (item in players) {
+            players[item].src = audioSources[item];
+        }
+        
+
+        for (key in players) {
+            players[key].onended = () => {
+                for (item in players) {
+                    players[item].pause();
+                    players[item].currentTime = 0;
+
+                }
+
+                for(item in playing) {
+                    if (playing[item]) {
+                        buttons[item].classList.toggle("bg-white");
+                        buttons[item].classList.toggle("text-slate-900");
+                        playing[item] = false;
+                    }
+                }
+            }
+        }
+
+        let firstVideoButton = document.getElementById("firstvideo");
+        let secondVideoButton = document.getElementById("secondvideo");
+
+
+        let select = (e) => {
+            if (e.currentTarget.id === "firstvideo") {
+                firstVideoButton.classList.add("bg-white/30");
+                secondVideoButton.classList.remove("bg-white/30");
+            } else if (e.currentTarget.id === "secondvideo") {
+                secondVideoButton.classList.add("bg-white/30");
+                firstVideoButton.classList.remove("bg-white/30");
+            }
+        }
+
+        let handler = (event) => {
+
+            let target = event.currentTarget.getAttribute('tar');
+
+            event.currentTarget.classList.toggle("bg-white");
+            event.currentTarget.classList.toggle("text-slate-900");
+
+            
+
+
+            if (total === 0) {
+                playing[target] = true;
+                total+=1;
+                // players[target].currentTime = 0;
+                players[target].play();
+                video.play();
+                videoPlaying = true;
+                return;
+            } else if (playing[target]){
+                playing[target] = false;
+                total-=1;
+                players[target].pause();
+                if (total === 0) {
+                    video.pause();
+                    videoPlaying = false;
+                }
+                
+                return;
+            }
+
+            total+=1;
+
+            for (key in playing) {
+                if (playing[key]) {
+                    players[key].pause();
+                }
+            }
+
+            let commonTime;
+            for (key in playing) {
+                if (playing[key]) {
+                    commonTime = players[key].currentTime;
+                    break;
+                }
+            }    
+
+            // video.currentTime = commonTime;
+
+            playing[target] = true;
+
+            for (key in playing) {
+                if (playing[key]) {
+                    players[key].currentTime = commonTime;
+                }
+            }    
+
+            if (!videoPlaying) {
+                return;
+            }
+
+            for (key in playing) {
+                if (playing[key]) {
+                    players[key].play();
+                }
+            }
+        
+    
+
+        }
+
+
+        // setTimeout(() => {
+        //     let player = document.getElementById("audio1");
+        //     let player2 = document.getElementById("audio2");
+        //     player.play(); player2.play();
+
+
+        //     setInterval(() => {
+        //         let a
+        //         console.log();
+                
+        //     }, 2000);
+
+        // }, 5000);
+        
+        document.getElementById("about-btn").addEventListener("click", () => {
+            
+            document.getElementById("about-btn").classList.toggle("hidden");
+            // document.getElementById("about").classList.toggle("-translate-y-full");
+
+            document.getElementById("about").classList.replace("hideme", "showme");
+            
+        });
+
+        document.getElementById("close-btn").addEventListener("click", () => {
+            
+            
+            // document.getElementById("about").classList.toggle("-translate-y-full");
+            document.getElementById("about-btn").classList.toggle("hidden");
+
+            document.getElementById("about").classList.replace("showme", "hideme");
+            
+        });
+
+
+
+    </script>
+</body>
+</html>
