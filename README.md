@@ -13,6 +13,7 @@ Sounds from different instruments can be played or muted using combinations of t
 
 ## Short Description
 Processed 3D fly-by space videos and used a multi-factor sonification approach to generate MIDI files that are used for music production.
+The produced music files can be found under `music` and are split into different tracks for every video.
 
 A vertical line grid is used on the videos and acts as notes played on a scale when objects in a frame meet them.
 Contour detection was used to identify stars and use their size and color to play melodies with corresponding tension.
